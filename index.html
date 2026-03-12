@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRACO RACING — Race Physics Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --red: #FF1744;
+    --red-dim: #b71c1c;
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --surface3: #22222f;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #7a7a9a;
+    --accent: #FF1744;
+    --green: #00e676;
+    --yellow: #FFD600;
+    --blue: #40c4ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0008 50%, #0a0a0f 100%);
+    border-bottom: 1px solid var(--red);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 0 40px rgba(255,23,68,0.15);
+  }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 1.4rem;
+    color: var(--red);
+    letter-spacing: 3px;
+    text-shadow: 0 0 20px rgba(255,23,68,0.6);
+  }
+  .logo span { color: #fff; font-weight: 400; font-size: 0.75rem; display: block; letter-spacing: 6px; margin-top: 2px; }
+
+  .header-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.6;
+  }
+  .header-badge strong { color: var(--green); }
+
+  /* ── NAV TABS ── */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    padding: 0 24px;
+  }
+
+  .tab {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 14px 20px;
+    cursor: pointer;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--red); border-bottom-color: var(--red); }
+
+  /* ── LAYOUT ── */
+  .page { display: none; padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── SECTION HEADERS ── */
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 4px;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--red-dim), transparent);
+  }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media(max-width:900px) { .grid-2,.grid-3,.grid-4 { grid-template-columns: 1fr; } }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+
+  /* ── INPUTS ── */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .field label .unit {
+    color: var(--yellow);
+    font-size: 0.65rem;
+    margin-left: 4px;
+  }
+
+  input[type=number], input[type=text], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    transition: border-color 0.2s;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  input[type=number]:focus, input[type=text]:focus, select:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 2px rgba(255,23,68,0.15);
+  }
+  select option { background: var(--surface2); }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--red);
+    margin-top: 4px;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 12px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn-primary {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(255,23,68,0.4);
+  }
+  .btn-primary:hover { background: #ff4569; box-shadow: 0 0 30px rgba(255,23,68,0.6); }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .btn-ghost:hover { border-color: var(--red); color: var(--red); }
+
+  .btn-green {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+  }
+  .btn-green:hover { background: rgba(0,230,118,0.1); }
+
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--red-dim);
+    color: var(--red);
+    font-size: 0.6rem;
+    padding: 6px 12px;
+  }
+
+  /* ── RESULT DISPLAY ── */
+  .result-hero {
+    background: linear-gradient(135deg, #1a0008, #0a0a1a);
+    border: 1px solid var(--red);
+    border-radius: 10px;
+    padding: 32px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(255,23,68,0.15), inset 0 0 40px rgba(255,23,68,0.03);
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-hero::before {
+    content: 'DRACO';
+    position: absolute;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8rem;
+    font-weight: 900;
+    color: rgba(255,23,68,0.03);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .result-time {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--red);
+    text-shadow: 0 0 40px rgba(255,23,68,0.8);
+    line-height: 1;
+  }
+  .result-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    margin-top: 8px;
+  }
+  .result-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+  .result-sub strong { color: var(--blue); }
+
+  /* ── STAT GRID ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-color, var(--red));
+  }
+  .stat-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+
+  /* ── CHART ── */
+  .chart-container {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  canvas { width: 100% !important; }
+
+  /* ── FORCE TABLE ── */
+  .force-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    margin-top: 12px;
+  }
+  .force-table th {
+    background: var(--surface3);
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    padding: 10px 14px;
+    text-align: left;
+    font-family: 'Orbitron', sans-serif;
+    border-bottom: 1px solid var(--border);
+  }
+  .force-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .force-table tr:hover td { background: rgba(255,23,68,0.04); }
+  .val-red { color: var(--red); }
+  .val-green { color: var(--green); }
+  .val-blue { color: var(--blue); }
+  .val-yellow { color: var(--yellow); }
+
+  /* ── MATERIALS TABLE ── */
+  .mat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .mat-table th {
+    background: var(--surface3);
+    color: var(--text-dim);
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    padding: 9px 12px;
+    font-family: 'Orbitron', sans-serif;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .mat-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    vertical-align: middle;
+  }
+  .mat-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .mat-badge {
+    display: inline-block;
+    font-size: 0.55rem;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Orbitron', sans-serif;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .badge-bearing { background: rgba(64,196,255,0.15); color: var(--blue); border: 1px solid rgba(64,196,255,0.3); }
+  .badge-axle { background: rgba(255,214,0,0.15); color: var(--yellow); border: 1px solid rgba(255,214,0,0.3); }
+  .badge-tether { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+  .badge-wheel { background: rgba(255,23,68,0.15); color: var(--red); border: 1px solid rgba(255,23,68,0.3); }
+
+  /* ── PHYSICS NOTE ── */
+  .physics-note {
+    background: var(--surface2);
+    border-left: 3px solid var(--blue);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .physics-note strong { color: var(--blue); }
+
+  /* ── PHASE BAR ── */
+  .phase-bar {
+    display: flex;
+    gap: 4px;
+    margin: 12px 0;
+    height: 28px;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .phase-seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.55rem;
+    letter-spacing: 1px;
+    color: #fff;
+    font-weight: 700;
+    transition: flex 0.5s ease;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--red-dim); }
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position: relative;
+    cursor: help;
+  }
+  .tooltip .tip {
+    display: none;
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-size: 0.68rem;
+    width: 220px;
+    z-index: 99;
+    pointer-events: none;
+    font-family: 'Share Tech Mono', monospace;
+    line-height: 1.5;
+    color: var(--text-dim);
+  }
+  .tooltip:hover .tip { display: block; }
+
+  /* ── MODAL-LIKE ADD FORM ── */
+  .add-form {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  .tag {
+    display: inline-block;
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .tag-draco { background: rgba(255,23,68,0.2); color: var(--red); border: 1px solid rgba(255,23,68,0.4); }
+  .tag-custom { background: rgba(0,230,118,0.15); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.78rem;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .lbl { color: var(--text-dim); font-family: 'Share Tech Mono', monospace; }
+  .info-row .val { font-family: 'Share Tech Mono', monospace; font-weight: 600; }
+
+  .run-btn-wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  /* Pulse animation for running */
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 20px rgba(255,23,68,0.4); }
+    50% { box-shadow: 0 0 50px rgba(255,23,68,0.9); }
+  }
+  .pulsing { animation: pulse 0.8s infinite; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DRACO RACING
+    <span>F1 IN SCHOOLS — RACE PHYSICS SIMULATOR v2.0</span>
+  </div>
+  <div class="header-badge">
+    STEM Racing 2025/26 · Professional Class<br>
+    Track: <strong>20.0 m</strong> · Power Unit: <strong>8g CO₂</strong>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('sim')">⚡ Simulator</button>
+  <button class="tab" onclick="showTab('materials')">🔬 Materials DB</button>
+  <button class="tab" onclick="showTab('physics')">📐 Physics Reference</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 1 — SIMULATOR
+═══════════════════════════════════════════════════════ -->
+<div class="page active" id="tab-sim">
+
+  <div class="grid-2" style="margin-bottom:20px">
+
+    <!-- LEFT: INPUTS -->
+    <div>
+      <!-- CAR MASS -->
+      <div class="section-title">Car Configuration</div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Mass Budget</div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Total Car Mass <span class="unit">[g]</span></label>
+            <input type="number" id="mass_total" value="55" min="48" max="120" step="0.5">
+          </div>
+          <div class="field">
+            <label>CO₂ Cartridge Mass <span class="unit">[g]</span></label>
+            <input type="number" id="mass_co2" value="29.1" min="28.9" max="29.4" step="0.1">
+          </div>
+          <div class="field">
+            <label>Wheel Mass (×4) <span class="unit">[g each]</span></label>
+            <input type="number" id="mass_wheel" value="2.8" min="0.5" max="8" step="0.1">
+          </div>
+          <div class="field">
+            <label>Bearing Mass (×8) <span class="unit">[g each]</span></label>
+            <input type="number" id="mass_bearing" value="1.0" min="0.1" max="3" step="0.1">
+          </div>
+        </div>
+      </div>
+
+      <!-- WHEEL GEOMETRY -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Wheel Geometry & Rolling Resistance</div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Wheel Diameter <span class="unit">[mm]</span></label>
+            <input type="number" id="wheel_dia" value="30" min="28" max="32" step="0.5">
+          </div>
+          <div class="field">
+            <label>Axle Diameter <span class="unit">[mm]</span></label>
+            <input type="number" id="axle_dia" value="4" min="2" max="6" step="0.1">
+          </div>
+          <div class="field">
+            <label>Rear Contact Width <span class="unit">[mm]</span></label>
+            <input type="number" id="wheel_width_rear" value="17" min="17" max="25" step="0.5">
+          </div>
+          <div class="field">
+            <label>Front Contact Width <span class="unit">[mm]</span></label>
+            <input type="number" id="wheel_width_front" value="13" min="13" max="20" step="0.5">
+          </div>
+          <div class="field">
+            <label>Wheel k-factor <span class="unit">[-]</span>
+              <span class="tooltip"> ⓘ<span class="tip">Rotational inertia factor. Solid disc=0.5, Spoked hub≈0.52–0.55, Ring=1.0. Your 3-spoke hub-heavy design ≈ 0.52</span></span>
+            </label>
+            <input type="number" id="wheel_k" value="0.52" min="0.4" max="1.0" step="0.01">
+          </div>
+          <div class="field">
+            <label>Bearing μ (kinetic) <span class="unit">[-]</span>
+              <span class="tooltip"> ⓘ<span class="tip">Si3N4 ceramic ZZ ≈ 0.001–0.002, 2RS rubber ≈ 0.003–0.005, steel ≈ 0.005–0.010</span></span>
+            </label>
+            <input type="number" id="mu_bearing" value="0.0015" min="0.0005" max="0.015" step="0.0005">
+          </div>
+        </div>
+        <div class="field">
+          <label>Tether Guide Friction μ <span class="unit">[-]</span>
+            <span class="tooltip"> ⓘ<span class="tip">SiC ceramic ≈ 0.10, PLA+ ≈ 0.50, brass ≈ 0.25, PTFE ≈ 0.05</span></span>
+          </label>
+          <select id="tether_mat">
+            <option value="0.10">SiC Ceramic (μ ≈ 0.10)</option>
+            <option value="0.05">PTFE (μ ≈ 0.05)</option>
+            <option value="0.25">Brass (μ ≈ 0.25)</option>
+            <option value="0.50" selected>PLA+ (μ ≈ 0.50)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- AERODYNAMICS -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Aerodynamics (CFD Results)</div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Drag Force @ 20 m/s <span class="unit">[N]</span>
+              <span class="tooltip"> ⓘ<span class="tip">From ANSYS CFD. Regional baseline: 0.601N. Target after iterations: &lt;0.480N</span></span>
+            </label>
+            <input type="number" id="drag_force" value="0.520" min="0.1" max="2.0" step="0.005">
+          </div>
+          <div class="field">
+            <label>Frontal Area A <span class="unit">[cm²]</span></label>
+            <input type="number" id="frontal_area" value="14.5" min="5" max="30" step="0.5">
+          </div>
+          <div class="field">
+            <label>Cd (drag coefficient) <span class="unit">[-]</span>
+              <span class="tooltip"> ⓘ<span class="tip">Auto-calculated from drag force & frontal area, or override. F1 in Schools cars: 0.3–0.7</span></span>
+            </label>
+            <input type="number" id="Cd" value="0.42" min="0.1" max="1.5" step="0.01">
+          </div>
+          <div class="field">
+            <label>Downforce @ 20 m/s <span class="unit">[N]</span></label>
+            <input type="number" id="downforce" value="0.08" min="0" max="0.5" step="0.005">
+          </div>
+        </div>
+      </div>
+
+      <!-- CO2 PROPULSION -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">CO₂ Propulsion (Gas Dynamics)</div>
+        <div class="grid-2">
+          <div class="field">
+            <label>CO₂ charge mass <span class="unit">[g]</span></label>
+            <input type="number" id="co2_charge" value="8.0" min="7" max="8" step="0.01">
+          </div>
+          <div class="field">
+            <label>Nozzle diameter <span class="unit">[mm]</span></label>
+            <input type="number" id="nozzle_dia" value="2.5" min="1" max="5" step="0.1">
+          </div>
+          <div class="field">
+            <label>Initial pressure P₀ <span class="unit">[bar]</span>
+              <span class="tooltip"> ⓘ<span class="tip">Standard 8g CO₂ cartridge pressure ≈ 55–60 bar at room temperature</span></span>
+            </label>
+            <input type="number" id="p0_bar" value="57" min="40" max="70" step="1">
+          </div>
+          <div class="field">
+            <label>Nozzle efficiency η <span class="unit">[-]</span>
+              <span class="tooltip"> ⓘ<span class="tip">0.65–0.85 typical. Accounts for non-ideal expansion, losses. Calibrate against real runs.</span></span>
+            </label>
+            <input type="number" id="nozzle_eta" value="0.72" min="0.4" max="1.0" step="0.01">
+          </div>
+        </div>
+        <div class="field">
+          <label>Ambient temperature <span class="unit">[°C]</span></label>
+          <input type="number" id="T_ambient" value="20" min="5" max="40" step="1">
+        </div>
+      </div>
+
+      <!-- TETHER -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Tether Line Geometry</div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Tether line tension <span class="unit">[N]</span>
+              <span class="tooltip"> ⓘ<span class="tip">Static pre-tension in tether. Typically 0.5–2.0N depending on track setup.</span></span>
+            </label>
+            <input type="number" id="tether_tension" value="1.0" min="0.1" max="5" step="0.1">
+          </div>
+          <div class="field">
+            <label>Guide bore diameter <span class="unit">[mm]</span></label>
+            <input type="number" id="guide_bore" value="4.87" min="3.5" max="6.0" step="0.1">
+          </div>
+          <div class="field">
+            <label>Tether line diameter <span class="unit">[mm]</span></label>
+            <input type="number" id="tether_line_dia" value="1.0" min="0.5" max="2" step="0.1">
+          </div>
+          <div class="field">
+            <label>Guide height above track <span class="unit">[mm]</span></label>
+            <input type="number" id="guide_height" value="8" min="2" max="20" step="1">
+          </div>
+        </div>
+      </div>
+
+      <div class="run-btn-wrap">
+        <button class="btn btn-primary" id="runBtn" onclick="runSimulation()">▶ RUN SIMULATION</button>
+        <button class="btn btn-ghost" onclick="resetDefaults()">↺ Reset Defaults</button>
+        <span id="sim-status" style="font-family:'Share Tech Mono',monospace;font-size:0.72rem;color:var(--text-dim)"></span>
+      </div>
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div id="results-panel">
+      <div class="section-title">Simulation Results</div>
+
+      <div class="result-hero" id="result-hero">
+        <div class="result-time" id="result-time">—</div>
+        <div class="result-label">PREDICTED RACE TIME</div>
+        <div class="result-sub" id="result-sub">Configure parameters and run simulation</div>
+      </div>
+
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat" style="--accent-color:var(--red)">
+          <div class="stat-val" id="s-vmax">—</div>
+          <div class="stat-label">Peak Velocity</div>
+        </div>
+        <div class="stat" style="--accent-color:var(--yellow)">
+          <div class="stat-val" id="s-amax">—</div>
+          <div class="stat-label">Peak Accel</div>
+        </div>
+        <div class="stat" style="--accent-color:var(--blue)">
+          <div class="stat-val" id="s-thrust-time">—</div>
+          <div class="stat-label">Thrust Duration</div>
+        </div>
+        <div class="stat" style="--accent-color:var(--green)">
+          <div class="stat-val" id="s-coast-dist">—</div>
+          <div class="stat-label">Coast Distance</div>
+        </div>
+        <div class="stat" style="--accent-color:var(--red)">
+          <div class="stat-val" id="s-fdrag">—</div>
+          <div class="stat-label">Peak Drag</div>
+        </div>
+        <div class="stat" style="--accent-color:var(--yellow)">
+          <div class="stat-val" id="s-froll">—</div>
+          <div class="stat-label">Rolling Resist</div>
+        </div>
+        <div class="stat" style="--accent-color:var(--blue)">
+          <div class="stat-val" id="s-ftether">—</div>
+          <div class="stat-label">Tether Friction</div>
+        </div>
+        <div class="stat" style="--accent-color:var(--green)">
+          <div class="stat-val" id="s-I_wheels">—</div>
+          <div class="stat-label">Wheel Inertia</div>
+        </div>
+      </div>
+
+      <!-- Phase bar -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Race Phase Timeline</div>
+        <div class="phase-bar" id="phase-bar">
+          <div class="phase-seg" style="background:var(--red);flex:1">THRUST</div>
+          <div class="phase-seg" style="background:var(--surface3);flex:3;color:var(--text-dim)">COAST</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--text-dim);font-family:'Share Tech Mono',monospace;margin-top:4px">
+          <span>0m</span>
+          <span id="phase-label-mid">—</span>
+          <span>20m</span>
+        </div>
+      </div>
+
+      <!-- Force breakdown -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Force Breakdown @ Peak Velocity</div>
+        <table class="force-table" id="force-table">
+          <thead><tr><th>Force Component</th><th>Value (N)</th><th>% of Total Drag</th><th>Formula</th></tr></thead>
+          <tbody id="force-tbody">
+            <tr><td colspan="4" style="color:var(--text-dim);font-family:'Share Tech Mono',monospace;padding:20px;text-align:center">Run simulation to see breakdown</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Velocity chart -->
+      <div class="chart-container">
+        <div class="card-title">Velocity & Thrust Profile</div>
+        <canvas id="velChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 2 — MATERIALS DATABASE
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-materials">
+
+  <div class="section-title">Component Materials Database</div>
+
+  <div class="add-form">
+    <div class="card-title">Add New Material</div>
+    <div class="grid-4">
+      <div class="field">
+        <label>Component Type</label>
+        <select id="new-type">
+          <option value="bearing">Bearing</option>
+          <option value="axle">Axle</option>
+          <option value="tether">Tether Guide</option>
+          <option value="wheel">Wheel</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Material Name</label>
+        <input type="text" id="new-name" placeholder="e.g. Ti-6Al-4V">
+      </div>
+      <div class="field">
+        <label>Friction μ <span class="unit">[-]</span></label>
+        <input type="number" id="new-mu" placeholder="0.002" min="0.0001" max="1" step="0.001">
+      </div>
+      <div class="field">
+        <label>Density <span class="unit">[g/cm³]</span></label>
+        <input type="number" id="new-density" placeholder="7.85" min="0.1" max="25" step="0.01">
+      </div>
+      <div class="field">
+        <label>Young's Modulus E <span class="unit">[GPa]</span></label>
+        <input type="number" id="new-E" placeholder="200" min="0.001" max="1000" step="1">
+      </div>
+      <div class="field">
+        <label>Hardness <span class="unit">[HV]</span></label>
+        <input type="number" id="new-hardness" placeholder="200" min="1" max="5000" step="10">
+      </div>
+      <div class="field">
+        <label>Mass per unit <span class="unit">[g]</span></label>
+        <input type="number" id="new-mass" placeholder="1.0" min="0.01" max="50" step="0.01">
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <input type="text" id="new-notes" placeholder="e.g. SMR74C-ZZ ceramic">
+      </div>
+    </div>
+    <button class="btn btn-green" onclick="addMaterial()">+ ADD TO DATABASE</button>
+  </div>
+
+  <!-- Bearings -->
+  <div class="section-title">Bearings</div>
+  <div style="overflow-x:auto;margin-bottom:24px">
+    <table class="mat-table" id="mat-bearing">
+      <thead><tr><th>Material</th><th>μ kinetic</th><th>Density g/cm³</th><th>E GPa</th><th>Hardness HV</th><th>Mass g</th><th>Notes</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Axles -->
+  <div class="section-title">Axles</div>
+  <div style="overflow-x:auto;margin-bottom:24px">
+    <table class="mat-table" id="mat-axle">
+      <thead><tr><th>Material</th><th>μ kinetic</th><th>Density g/cm³</th><th>E GPa</th><th>Hardness HV</th><th>Mass g</th><th>Notes</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Tether Guides -->
+  <div class="section-title">Tether Guides</div>
+  <div style="overflow-x:auto;margin-bottom:24px">
+    <table class="mat-table" id="mat-tether">
+      <thead><tr><th>Material</th><th>μ kinetic</th><th>Density g/cm³</th><th>E GPa</th><th>Hardness HV</th><th>Mass g</th><th>Notes</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Wheels -->
+  <div class="section-title">Wheel Materials</div>
+  <div style="overflow-x:auto;margin-bottom:24px">
+    <table class="mat-table" id="mat-wheel">
+      <thead><tr><th>Material</th><th>μ kinetic</th><th>Density g/cm³</th><th>E GPa</th><th>Hardness HV</th><th>Mass g</th><th>Notes</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB 3 — PHYSICS REFERENCE
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="tab-physics">
+  <div class="section-title">Physics Model Reference</div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">CO₂ Gas Expulsion Model</div>
+        <div class="physics-note">
+          <strong>Isentropic choked flow (de Laval nozzle):</strong><br>
+          ṁ = A_t · P · √(γ/RT) · (2/(γ+1))^((γ+1)/(2(γ-1)))<br><br>
+          <strong>Thrust:</strong> F = ṁ · v_e · η<br>
+          v_e = √(2γ/(γ-1) · RT₀/M · [1-(Pe/P₀)^((γ-1)/γ)])<br><br>
+          <strong>Pressure decay (adiabatic):</strong><br>
+          P(t) = P₀ · (1 - ṁ·t / m₀)^γ<br><br>
+          CO₂ constants: γ=1.30, M=44 g/mol, R=188.9 J/(kg·K)
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Rolling Resistance</div>
+        <div class="physics-note">
+          <strong>Contact patch deformation:</strong><br>
+          F_rr = C_rr · N<br>
+          C_rr ≈ (a/R) where a = contact half-width<br><br>
+          <strong>Bearing friction torque:</strong><br>
+          τ_bearing = μ_k · F_N · r_axle<br>
+          F_bearing = τ_bearing / r_wheel<br><br>
+          <strong>Rolling radius:</strong><br>
+          r_eff = r_wheel - δ (elastic deflection)<br>
+          δ ≈ F_N / (E* · l_contact) (Hertzian contact)
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Rotational Inertia</div>
+        <div class="physics-note">
+          <strong>Effective mass including wheel inertia:</strong><br>
+          m_eff = m_car + 4 · (k · m_wheel · (r_wheel/r_wheel)²)<br>
+          m_eff = m_car + 4 · k · m_wheel<br><br>
+          <strong>For Draco 3-spoke hub-heavy wheel:</strong><br>
+          k ≈ 0.52 → m_eff = m_car + 4 × 0.52 × m_wheel<br><br>
+          <strong>Crossover speed (v_c):</strong><br>
+          When F_accel = F_inertia_rot → rim mass disadvantage
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Aerodynamic Drag</div>
+        <div class="physics-note">
+          <strong>Drag force:</strong><br>
+          F_D = ½ · ρ · v² · C_d · A<br><br>
+          ρ_air = 1.204 kg/m³ @ 20°C, 1 atm<br>
+          Scales as: F_D ∝ v²<br><br>
+          <strong>At v = 20 m/s (Draco target):</strong><br>
+          F_D = ½ × 1.204 × 400 × C_d × A<br>
+          = 240.8 × C_d × A<br><br>
+          <strong>Downforce effect on rolling resistance:</strong><br>
+          N_total = mg + F_downforce<br>
+          F_rr_aero = C_rr · F_downforce
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Tether Line Friction</div>
+        <div class="physics-note">
+          <strong>Guide friction force:</strong><br>
+          F_tether = μ_guide · T · (1 - cos θ)<br><br>
+          where T = tether tension, θ = deflection angle<br><br>
+          <strong>Lateral constraint force:</strong><br>
+          At angle α from centreline:<br>
+          F_lateral = T · sin α<br>
+          F_friction_guide = μ · F_lateral<br><br>
+          <strong>Two guides (front + rear):</strong><br>
+          F_tether_total = 2 × F_tether_single
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Equation of Motion (ODE)</div>
+        <div class="physics-note">
+          <strong>Numerical integration (RK4):</strong><br>
+          m_eff · a = F_thrust(t) - F_drag(v) - F_roll(v) - F_tether<br><br>
+          F_drag = ½ρv²C_dA<br>
+          F_roll = μ_bearing·N·(r_axle/r_wheel) + C_rr·N<br>
+          F_tether = 2·μ_guide·T_tether<br><br>
+          <strong>State vector:</strong> [x, v]<br>
+          <strong>Time step:</strong> Δt = 0.0001 s<br>
+          <strong>Stop when:</strong> x ≥ 20.0 m
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<script>
+// ══════════════════════════════════════════════
+//  MATERIALS DATABASE
+// ══════════════════════════════════════════════
+const MATERIALS = {
+  bearing: [
+    { name: 'Si₃N₄ Ceramic (ZZ)', mu: 0.0015, density: 3.2, E: 310, hardness: 1500, mass: 1.0, notes: 'SMR74C-ZZ · Draco selected', draco: true },
+    { name: 'Si₃N₄ Ceramic (2RS)', mu: 0.004, density: 3.2, E: 310, hardness: 1500, mass: 1.0, notes: 'SMR74C-2RS · rubber sealed' },
+    { name: 'ZrO₂ Ceramic (ZZ)', mu: 0.002, density: 6.0, E: 200, hardness: 1200, mass: 1.5, notes: 'Competitor reference' },
+    { name: 'Steel (ZZ)', mu: 0.006, density: 7.85, E: 200, hardness: 700, mass: 1.4, notes: 'Steel MR74-ZZ baseline' },
+    { name: 'ABEC-7 Steel (2RS)', mu: 0.008, density: 7.85, E: 200, hardness: 700, mass: 1.5, notes: 'Standard school bearing' },
+  ],
+  axle: [
+    { name: 'Silver Steel BS1407', mu: 0.12, density: 7.85, E: 200, hardness: 600, mass: 3.2, notes: '4mm h6 ground · Draco selected', draco: true },
+    { name: 'Ti-6Al-4V', mu: 0.15, density: 4.43, E: 114, hardness: 340, mass: 1.8, notes: '4mm · R&D comparison only' },
+    { name: 'Nylon PA12', mu: 0.35, density: 1.14, E: 3, hardness: 20, mass: 0.5, notes: 'Competitor reference · poor E' },
+    { name: '304 Stainless Steel', mu: 0.18, density: 7.9, E: 193, hardness: 200, mass: 3.3, notes: 'Low hardness vs BS1407' },
+  ],
+  tether: [
+    { name: 'SiC Ceramic Ring', mu: 0.10, density: 3.2, E: 410, hardness: 2500, mass: 0.15, notes: '4.87mm bore · Draco selected', draco: true },
+    { name: 'PTFE O-ring', mu: 0.05, density: 2.2, E: 0.5, hardness: 5, mass: 0.05, notes: 'Low friction but flexible' },
+    { name: 'PLA+', mu: 0.50, density: 1.24, E: 3.5, hardness: 80, mass: 0.8, notes: 'Regional baseline · high friction' },
+    { name: 'Brass Washer', mu: 0.25, density: 8.5, E: 110, hardness: 120, mass: 0.6, notes: 'Medium friction, heavy' },
+    { name: 'Aluminium Washer', mu: 0.35, density: 2.7, E: 70, hardness: 80, mass: 0.2, notes: 'Lightweight but wears' },
+  ],
+  wheel: [
+    { name: 'PLA+ (3D print)', mu: 0.70, density: 1.24, E: 3.5, hardness: 80, mass: 2.5, notes: 'Draco current · printed spokes', draco: true },
+    { name: 'PETG (3D print)', mu: 0.65, density: 1.27, E: 2.1, hardness: 65, mass: 2.6, notes: 'Alternative print material' },
+    { name: 'Nylon PA12', mu: 0.45, density: 1.14, E: 3.0, hardness: 70, mass: 2.3, notes: 'SLS powder-bed option' },
+    { name: 'Carbon Fibre (SLA)', mu: 0.30, density: 1.6, E: 60, hardness: 400, mass: 1.8, notes: 'High stiffness, lower inertia' },
+  ]
+};
+
+let userMaterials = JSON.parse(localStorage.getItem('draco_materials') || '{}');
+
+function saveMaterials() {
+  localStorage.setItem('draco_materials', JSON.stringify(userMaterials));
+}
+
+function addMaterial() {
+  const type = document.getElementById('new-type').value;
+  const name = document.getElementById('new-name').value.trim();
+  if (!name) { alert('Please enter a material name.'); return; }
+  const mat = {
+    name,
+    mu: parseFloat(document.getElementById('new-mu').value) || 0,
+    density: parseFloat(document.getElementById('new-density').value) || 0,
+    E: parseFloat(document.getElementById('new-E').value) || 0,
+    hardness: parseFloat(document.getElementById('new-hardness').value) || 0,
+    mass: parseFloat(document.getElementById('new-mass').value) || 0,
+    notes: document.getElementById('new-notes').value.trim(),
+    custom: true
+  };
+  if (!userMaterials[type]) userMaterials[type] = [];
+  userMaterials[type].push(mat);
+  saveMaterials();
+  renderMaterialTables();
+  ['new-name','new-mu','new-density','new-E','new-hardness','new-mass','new-notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteMaterial(type, idx, isCustom) {
+  if (!isCustom) { alert('Built-in materials cannot be deleted.'); return; }
+  userMaterials[type].splice(idx, 0, 1);
+  userMaterials[type] = userMaterials[type].filter((_, i) => i !== idx - MATERIALS[type].length);
+  saveMaterials();
+  renderMaterialTables();
+}
+
+function renderMaterialTables() {
+  ['bearing','axle','tether','wheel'].forEach(type => {
+    const tbody = document.querySelector(`#mat-${type} tbody`);
+    tbody.innerHTML = '';
+    const all = [...MATERIALS[type], ...(userMaterials[type] || [])];
+    all.forEach((m, i) => {
+      const isCustom = !!m.custom;
+      const isDraco = !!m.draco;
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${m.name}${isDraco ? ' <span class="tag tag-draco">DRACO</span>' : ''}${isCustom ? ' <span class="tag tag-custom">CUSTOM</span>' : ''}</td>
+        <td class="val-blue">${m.mu}</td>
+        <td>${m.density}</td>
+        <td>${m.E}</td>
+        <td class="val-yellow">${m.hardness}</td>
+        <td>${m.mass}</td>
+        <td style="color:var(--text-dim)">${m.notes || '—'}</td>
+        <td>${isCustom ? `<button class="btn btn-danger" onclick="deleteMaterial('${type}',${i},true)">✕</button>` : ''}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════
+//  CHART
+// ══════════════════════════════════════════════
+let velChartInst = null;
+
+function renderChart(tArr, vArr, fArr, xArr) {
+  const ctx = document.getElementById('velChart').getContext('2d');
+  if (velChartInst) velChartInst.destroy();
+  velChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: tArr.map(t => t.toFixed(3)),
+      datasets: [
+        {
+          label: 'Velocity (m/s)',
+          data: vArr,
+          borderColor: '#FF1744',
+          backgroundColor: 'rgba(255,23,68,0.08)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: true,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Thrust (N)',
+          data: fArr,
+          borderColor: '#FFD600',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: false,
+          borderDash: [4,2],
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#7a7a9a', font: { family: 'Share Tech Mono', size: 10 } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)}` } }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Time (s)', color: '#7a7a9a', font: { family: 'Share Tech Mono', size: 10 } },
+          ticks: { color: '#7a7a9a', font: { size: 9 }, maxTicksLimit: 10 },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          title: { display: true, text: 'Velocity (m/s)', color: '#FF1744', font: { family: 'Share Tech Mono', size: 10 } },
+          ticks: { color: '#7a7a9a', font: { size: 9 } },
+          grid: { color: 'rgba(255,255,255,0.06)' }
+        },
+        y1: {
+          position: 'right',
+          title: { display: true, text: 'Thrust (N)', color: '#FFD600', font: { family: 'Share Tech Mono', size: 10 } },
+          ticks: { color: '#7a7a9a', font: { size: 9 } },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+//  PHYSICS SIMULATION
+// ══════════════════════════════════════════════
+
+function g(id) { return parseFloat(document.getElementById(id).value); }
+
+function runSimulation() {
+  const btn = document.getElementById('runBtn');
+  btn.classList.add('pulsing');
+  document.getElementById('sim-status').textContent = 'Computing...';
+
+  setTimeout(() => {
+    try {
+      const result = simulate();
+      displayResults(result);
+    } catch(e) {
+      document.getElementById('sim-status').textContent = 'Error: ' + e.message;
+    }
+    btn.classList.remove('pulsing');
+    document.getElementById('sim-status').textContent = 'Complete ✓';
+  }, 50);
+}
+
+function simulate() {
+  // ── Constants ──
+  const rho_air = 1.204;          // kg/m³
+  const g_grav = 9.81;             // m/s²
+  const R_gas = 8.314;             // J/(mol·K)
+  const gamma_co2 = 1.30;
+  const M_co2 = 0.044;             // kg/mol
+  const R_co2 = R_gas / M_co2;    // J/(kg·K) = 188.9
+  const track_len = 20.0;          // m
+
+  // ── Parameters ──
+  const m_car_g  = g('mass_total');
+  const m_co2_g  = g('mass_co2');
+  const m_wheel_g = g('mass_wheel');
+  const m_bearing_g = g('mass_bearing');
+  const wheel_dia_mm = g('wheel_dia');
+  const axle_dia_mm  = g('axle_dia');
+  const mu_bearing   = g('mu_bearing');
+  const mu_tether    = parseFloat(document.getElementById('tether_mat').value);
+  const wheel_k      = g('wheel_k');
+  const Cd           = g('Cd');
+  const A_m2         = g('frontal_area') * 1e-4;
+  const F_down       = g('downforce');
+
+  const m_co2_charge_kg = g('co2_charge') * 1e-3;
+  const d_nozzle_m      = g('nozzle_dia') * 1e-3;
+  const A_nozzle        = Math.PI * (d_nozzle_m/2)**2;
+  const P0_Pa           = g('p0_bar') * 1e5;
+  const T_amb           = g('T_ambient') + 273.15;
+  const eta_nozzle      = g('nozzle_eta');
+  const tether_tension  = g('tether_tension');
+  const guide_mu        = mu_tether;
+
+  // ── Derived quantities ──
+  const r_wheel = (wheel_dia_mm / 2) * 1e-3;  // m
+  const r_axle  = (axle_dia_mm  / 2) * 1e-3;  // m
+
+  // Total mass including CO₂
+  const m_total = (m_car_g + m_co2_g) * 1e-3;  // kg (includes CO₂ at launch)
+  const m_body  = (m_car_g) * 1e-3;
+
+  // Wheel rotational inertia: effective mass = m + sum(k*m_wheel) for 4 wheels
+  const m_wheel = m_wheel_g * 1e-3;
+  const m_bearing = m_bearing_g * 1e-3;
+  const I_wheel_each = wheel_k * m_wheel * r_wheel**2;  // kg·m²
+  const m_eff_rot = 4 * I_wheel_each / r_wheel**2;       // equiv. linear mass
+
+  // Normal force (static, before motion)
+  const N_static = m_total * g_grav;
+
+  // Rolling resistance coefficient (bearing friction dominant)
+  // F_roll = mu_bearing * N * (r_axle / r_wheel)  [bearing friction torque projected]
+  // Plus small Hertzian: C_rr_contact ≈ 0.001 for hard wheels on flat track
+
+  // Tether friction: F_tether = 2 * mu_guide * T  (2 guides)
+  const F_tether_const = 2 * guide_mu * tether_tension;
+
+  // ── CO₂ Thrust Model ──
+  // Choked flow mass flux (de Laval, choked condition if P0/P_atm > ((γ+1)/2)^(γ/(γ-1)))
+  // Critical pressure ratio for CO₂ (γ=1.30): (2/2.30)^(1.30/0.30) = (0.870)^4.33 ≈ 0.546
+  const P_atm = 101325;
+  const choke_ratio = Math.pow(2/(gamma_co2+1), gamma_co2/(gamma_co2-1)); // ≈ 0.546
+  const P_choke = P_atm / choke_ratio; // threshold below which unchoked
+
+  // Choked mass flow rate (isothermal approximation of cartridge temp drop later)
+  // ṁ = A_t * P * sqrt(γ/R/T) * (2/(γ+1))^((γ+1)/(2(γ-1)))
+  function chokedMdot(P, T) {
+    const factor = Math.pow(2/(gamma_co2+1), (gamma_co2+1)/(2*(gamma_co2-1)));
+    return A_nozzle * P * Math.sqrt(gamma_co2 / (R_co2 * T)) * factor;
+  }
+
+  // Exit velocity (isentropic expansion to P_atm)
+  function exitVelocity(P, T) {
+    const term = 1 - Math.pow(P_atm/P, (gamma_co2-1)/gamma_co2);
+    return Math.sqrt(2 * gamma_co2 / (gamma_co2-1) * R_co2 * T * Math.max(0, term));
+  }
+
+  // ── RK4 Integration ──
+  const dt = 0.0001;
+  let t = 0, x = 0, v = 0;
+  let m_co2_remain = m_co2_charge_kg;
+  let P = P0_Pa;
+  let T_tank = T_amb;
+
+  // Record arrays (downsample)
+  const tArr = [], vArr = [], fThrustArr = [], xArr = [];
+  let sample = 0;
+
+  let t_thrust_end = 0;
+  let thrust_active = true;
+  let x_at_thrust_end = 0;
+  let v_max = 0;
+  let a_max = 0;
+
+  let iterations = 0;
+  const MAX_ITER = 1000000;
+
+  while (x < track_len && iterations < MAX_ITER) {
+    iterations++;
+
+    // Current total moving mass (decreases as CO₂ expelled)
+    const m_moving = m_body + m_co2_remain + m_eff_rot;
+
+    // Thrust
+    let F_thrust = 0;
+    if (thrust_active && m_co2_remain > 0 && P > P_atm * 1.05) {
+      const mdot = chokedMdot(P, T_tank);
+      const v_e  = exitVelocity(P, T_tank);
+      F_thrust = eta_nozzle * mdot * v_e;
+
+      // Adiabatic pressure/temp decay
+      const P_new = P * Math.pow(1 - mdot*dt/m_co2_remain, gamma_co2);
+      const T_new = T_tank * (P_new/P)**((gamma_co2-1)/gamma_co2);
+      m_co2_remain -= mdot * dt;
+      P = Math.max(P_atm, P_new);
+      T_tank = Math.max(220, T_new);  // floor at ~−50°C
+
+      if (m_co2_remain <= 0 || P <= P_atm * 1.05) {
+        thrust_active = false;
+        t_thrust_end = t;
+        x_at_thrust_end = x;
+      }
+    } else {
+      thrust_active = false;
+    }
+
+    // Normal force (includes downforce)
+    const N = m_moving * g_grav + 0.5 * rho_air * v*v * Cd * A_m2 * 0.05; // small downforce approx
+
+    // Resistance forces
+    const F_drag = 0.5 * rho_air * v*v * Cd * A_m2;
+    const F_roll = mu_bearing * N * (r_axle / r_wheel) + 0.001 * N;  // bearing + rolling
+    const F_tet  = v > 0.01 ? F_tether_const : 0;
+
+    const F_net = F_thrust - F_drag - F_roll - F_tet;
+    const a = F_net / m_moving;
+
+    if (a > a_max) a_max = a;
+    if (v > v_max) v_max = v;
+
+    v = Math.max(0, v + a * dt);
+    x += v * dt;
+    t += dt;
+
+    // Store every 50 steps
+    if (sample++ % 50 === 0) {
+      tArr.push(t);
+      vArr.push(v);
+      fThrustArr.push(F_thrust);
+      xArr.push(x);
+    }
+  }
+
+  if (iterations >= MAX_ITER) throw new Error('Simulation did not converge — check parameters');
+
+  // Force breakdown at peak velocity
+  const v_pk = v_max;
+  const N_pk = m_body * g_grav;
+  const F_drag_pk = 0.5 * rho_air * v_pk**2 * Cd * A_m2;
+  const F_roll_pk = mu_bearing * N_pk * (r_axle/r_wheel) + 0.001 * N_pk;
+  const F_tet_pk  = F_tether_const;
+  const F_total_resist = F_drag_pk + F_roll_pk + F_tet_pk;
+
+  return {
+    race_time: t,
+    v_max: v_pk,
+    a_max: a_max,
+    t_thrust: t_thrust_end || t * 0.3,
+    x_thrust: x_at_thrust_end,
+    I_wheel: I_wheel_each * 4 * 1e6,  // mg·m² for display
+    F_drag_pk, F_roll_pk, F_tet_pk, F_total_resist,
+    N_static,
+    tArr, vArr, fThrustArr, xArr,
+    m_eff_rot
+  };
+}
+
+function displayResults(r) {
+  // Hero
+  document.getElementById('result-time').textContent = r.race_time.toFixed(4) + 's';
+  document.getElementById('result-sub').innerHTML =
+    `Peak v: <strong>${r.v_max.toFixed(2)} m/s</strong> (${(r.v_max*3.6).toFixed(1)} km/h) &nbsp;|&nbsp; ` +
+    `Thrust phase: <strong>${r.t_thrust.toFixed(4)} s</strong> over <strong>${r.x_thrust.toFixed(2)} m</strong>`;
+
+  // Stats
+  document.getElementById('s-vmax').textContent = r.v_max.toFixed(2) + ' m/s';
+  document.getElementById('s-amax').textContent = r.a_max.toFixed(1) + ' m/s²';
+  document.getElementById('s-thrust-time').textContent = r.t_thrust.toFixed(4) + 's';
+  document.getElementById('s-coast-dist').textContent = (20 - r.x_thrust).toFixed(2) + 'm';
+  document.getElementById('s-fdrag').textContent = r.F_drag_pk.toFixed(4) + 'N';
+  document.getElementById('s-froll').textContent = r.F_roll_pk.toFixed(4) + 'N';
+  document.getElementById('s-ftether').textContent = r.F_tet_pk.toFixed(4) + 'N';
+  document.getElementById('s-I_wheels').textContent = r.I_wheel.toFixed(2) + ' μg·m²';
+
+  // Phase bar
+  const thrustFrac = Math.min(0.95, r.x_thrust / 20);
+  const coastFrac  = 1 - thrustFrac;
+  const pb = document.getElementById('phase-bar');
+  pb.innerHTML = `
+    <div class="phase-seg" style="background:var(--red);flex:${thrustFrac}">THRUST</div>
+    <div class="phase-seg" style="background:var(--surface3);flex:${coastFrac};color:var(--text-dim)">COAST</div>
+  `;
+  document.getElementById('phase-label-mid').textContent =
+    `Thrust ends @ ${r.x_thrust.toFixed(1)}m / ${r.t_thrust.toFixed(3)}s`;
+
+  // Force table
+  const total = r.F_total_resist;
+  const tbody = document.getElementById('force-tbody');
+  const pct = v => (v/total*100).toFixed(1) + '%';
+  tbody.innerHTML = `
+    <tr><td>Aerodynamic Drag</td><td class="val-red">${r.F_drag_pk.toFixed(5)}</td><td>${pct(r.F_drag_pk)}</td><td>½ρv²CdA</td></tr>
+    <tr><td>Bearing Rolling Friction</td><td class="val-yellow">${(r.F_roll_pk*0.85).toFixed(5)}</td><td>${pct(r.F_roll_pk*0.85)}</td><td>μN(r_axle/r_wheel)</td></tr>
+    <tr><td>Tyre-Track Rolling Resist.</td><td class="val-yellow">${(r.F_roll_pk*0.15).toFixed(5)}</td><td>${pct(r.F_roll_pk*0.15)}</td><td>C_rr · N</td></tr>
+    <tr><td>Tether Guide Friction (×2)</td><td class="val-blue">${r.F_tet_pk.toFixed(5)}</td><td>${pct(r.F_tet_pk)}</td><td>2μ_guide · T</td></tr>
+    <tr style="background:rgba(255,255,255,0.02)"><td><strong>TOTAL RESISTANCE @ V_max</strong></td><td class="val-green"><strong>${total.toFixed(5)}</strong></td><td>100%</td><td></td></tr>
+  `;
+
+  // Chart (downsample to ~500 pts for performance)
+  const stride = Math.max(1, Math.floor(r.tArr.length / 500));
+  const tS = r.tArr.filter((_,i) => i%stride===0);
+  const vS = r.vArr.filter((_,i) => i%stride===0);
+  const fS = r.fThrustArr.filter((_,i) => i%stride===0);
+  renderChart(tS, vS, fS, r.xArr.filter((_,i)=>i%stride===0));
+}
+
+// ══════════════════════════════════════════════
+//  UI UTILS
+// ══════════════════════════════════════════════
+function showTab(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function resetDefaults() {
+  const defaults = {
+    mass_total:55, mass_co2:29.1, mass_wheel:2.8, mass_bearing:1.0,
+    wheel_dia:30, axle_dia:4, wheel_width_rear:17, wheel_width_front:13,
+    wheel_k:0.52, mu_bearing:0.0015,
+    drag_force:0.520, frontal_area:14.5, Cd:0.42, downforce:0.08,
+    co2_charge:8.0, nozzle_dia:2.5, p0_bar:57, nozzle_eta:0.72, T_ambient:20,
+    tether_tension:1.0, guide_bore:4.87, tether_line_dia:1.0, guide_height:8
+  };
+  Object.entries(defaults).forEach(([k,v]) => {
+    const el = document.getElementById(k);
+    if (el) el.value = v;
+  });
+  document.getElementById('tether_mat').value = '0.10';
+  document.getElementById('sim-status').textContent = 'Defaults restored';
+}
+
+// ── INIT ──
+renderMaterialTables();
+</script>
+
+</body>
+</html>
